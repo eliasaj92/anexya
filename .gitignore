@@ -1,0 +1,28 @@
+# Java / Gradle
+api/build/
+api/.gradle/
+api/out/
+api/*.log
+api/*.iml
+api/.classpath
+api/.project
+api/.settings/
+api/*.jar
+
+# Node / CDK
+infra/node_modules/
+infra/cdk.out/
+infra/dist/
+infra/.jsii/
+
+# IDE / Tooling
+.idea/
+.vscode/
+.gemini/
+gemini/
+
+# OS / misc
+.DS_Store
+
+# Env/config
+.env*
