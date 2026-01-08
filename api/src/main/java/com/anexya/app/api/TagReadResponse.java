@@ -10,7 +10,8 @@ import lombok.Value;
 
 @Value
 @Builder
-public class TagReadResponse {
+public class TagReadResponse
+{
     UUID id;
     String siteName;
     String epc;
@@ -19,15 +20,10 @@ public class TagReadResponse {
     Double rssi;
     Instant readAt;
 
-    public static TagReadResponse from(TagRead tx) {
-        return TagReadResponse.builder()
-                .id(tx.getId())
-                .siteName(tx.getSiteName())
-                .epc(tx.getEpc())
-                .referenceCode(tx.getReferenceCode())
-                .location(tx.getLocation())
-                .rssi(tx.getRssi())
-                .readAt(tx.getReadAt())
-                .build();
+    public static TagReadResponse from(TagRead tx)
+    {
+        return TagReadResponse.builder().id(tx.getId()).siteName(tx.getSiteName()).epc(tx.getEpc())
+                .referenceCode(tx.getReferenceCode()).location(tx.getLocation()).rssi(tx.getRssi())
+                .readAt(tx.getReadAt()).build();
     }
 }

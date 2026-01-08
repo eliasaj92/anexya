@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress false positives for dependency-injected collaborators that are intentionally mutable beans -->
+    <Match>
+        <Bug code="EI2"/>
+        <Package name="com.anexya.app"/>
+    </Match>
+</FindBugsFilter>

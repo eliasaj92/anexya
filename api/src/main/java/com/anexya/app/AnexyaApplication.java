@@ -10,19 +10,23 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.core.task.support.TaskExecutorAdapter;
 
 @SpringBootApplication
-public class AnexyaApplication {
+public class AnexyaApplication
+{
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         SpringApplication.run(AnexyaApplication.class, args);
     }
 
     @Bean(destroyMethod = "close")
-    public ExecutorService applicationVirtualThreadExecutor() {
+    public ExecutorService applicationVirtualThreadExecutor()
+    {
         return Executors.newVirtualThreadPerTaskExecutor();
     }
 
     @Bean
-    public TaskExecutor taskExecutor(ExecutorService applicationVirtualThreadExecutor) {
+    public TaskExecutor taskExecutor(ExecutorService applicationVirtualThreadExecutor)
+    {
         return new TaskExecutorAdapter(applicationVirtualThreadExecutor);
     }
 }

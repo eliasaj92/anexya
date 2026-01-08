@@ -37,6 +37,15 @@ Environment variables also work: `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_
 - JSON: `GET /v3/api-docs`
 - UI: `GET /swagger-ui.html`
 
+#### Viewing Swagger locally
+1. Start the app (in-memory):
+	```bash
+	cd api
+	./gradlew bootRun
+	```
+2. Open Swagger UI: http://localhost:8080/swagger-ui.html
+3. Download OpenAPI JSON: http://localhost:8080/v3/api-docs
+
 ## Infrastructure (AWS CDK v2, TypeScript)
 - Location: `infra/`
 - Provisions: VPC, ECS cluster, ECR repo (`anexya-api`), RDS MySQL (8.0), ALB-backed Fargate service (port 80 -> 8080), ALB health check `/actuator/health`. ECS tasks get DB host/port/db as env vars and username/password from Secrets Manager.
@@ -70,4 +79,19 @@ docker push <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/anexya-api:latest
 - **Backups**: RDS automatic snapshots as per AWS defaults (can be customized in the stack).
 
 ## Architecture
-- See `docs/architecture.md` for the Mermaid diagram and component notes.
+See below for the high-level diagram and component notes. A copy also lives in `docs/architecture.md`.
+
+```mermaid
+flowchart LR
+	Client --> ALB[Application Load Balancer]
+	ALB --> ECS[Fargate Service]
+	ECS --> ApiContainer[Spring Boot App]
+	ApiContainer --> ECR[(ECR Image Repo)]
+	subgraph VPC
+		ALB
+		ECS
+		RDS
+	end
+```
+
+![Architecture Diagram](docs/architecture.png)

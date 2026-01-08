@@ -8,7 +8,8 @@ import lombok.Value;
 
 @Value
 @Builder(toBuilder = true)
-public class TagRead {
+public class TagRead
+{
     UUID id;
     String siteName;
     String epc;
