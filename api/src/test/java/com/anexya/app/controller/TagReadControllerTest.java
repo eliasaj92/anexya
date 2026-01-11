@@ -35,6 +35,10 @@ import com.anexya.app.domain.TagReadUpdate;
 import com.anexya.app.domain.TagSummary;
 import com.anexya.app.web.TagReadNotFoundException;
 
+/**
+ * Pure controller unit test: calls the controller directly with real MapStruct mappers and mocked service layer.
+ * No Spring context or MVC stack involved.
+ */
 @ExtendWith(MockitoExtension.class)
 class TagReadControllerTest {
     @Mock

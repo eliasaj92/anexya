@@ -28,6 +28,10 @@ import com.anexya.app.api.CreateTagReadRequest;
 import com.anexya.app.api.TagReadResponse;
 import com.anexya.app.api.UpdateTagReadRequest;
 
+/**
+ * Full-stack integration test: boots the application with a real MySQL Testcontainer,
+ * applies Flyway test migrations, and exercises REST endpoints via TestRestTemplate.
+ */
 @SpringBootTest(classes = AnexyaApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("mysql")
 @TestPropertySource(properties = "spring.flyway.locations=classpath:db/migration/testmysql")

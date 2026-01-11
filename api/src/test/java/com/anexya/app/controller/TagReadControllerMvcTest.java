@@ -45,6 +45,10 @@ import com.anexya.app.web.RequestLoggingFilter;
 import com.anexya.app.web.TagReadNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * Spring MVC slice test: spins up the web layer with MockMvc and mocks the service/mappers.
+ * Verifies request/response wiring, validation, and status codes without starting the full application.
+ */
 @WebMvcTest(controllers = TagReadController.class, excludeFilters = {@ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RequestLoggingFilter.class)})
 @AutoConfigureMockMvc(addFilters = false)
 @SuppressWarnings("null")
