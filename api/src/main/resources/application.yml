@@ -4,9 +4,6 @@ spring:
   threads:
     virtual:
       enabled: true
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
 
 server:
   port: 8080
@@ -14,9 +11,7 @@ server:
 
 management:
   endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
+
   endpoint:
     health:
       probes:

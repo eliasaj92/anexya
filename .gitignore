@@ -14,6 +14,7 @@ infra/node_modules/
 infra/cdk.out/
 infra/dist/
 infra/.jsii/
+infra/cdk.context.json
 
 # IDE / Tooling
 .idea/

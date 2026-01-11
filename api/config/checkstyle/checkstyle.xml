@@ -18,21 +18,19 @@
         </module>
         <module name="UnusedImports"/>
         <module name="AvoidStarImport"/>
-        <module name="NeedBraces"/>
-        <module name="EqualsHashCode"/>
-        <module name="WhitespaceAround"/>
-        <module name="WhitespaceAfter"/>
-        <module name="NoLineWrap"/>
-        <module name="MethodParamPad"/>
-        <module name="OperatorWrap"/>
-        <module name="ParenPad"/>
-        <module name="TypecastParenPad"/>
-        <module name="RightCurly"/>
+    <module name="NeedBraces"/>
+    <module name="EqualsHashCode"/>
+    <module name="WhitespaceAround"/>
+    <module name="WhitespaceAfter"/>
+    <module name="NoLineWrap"/>
+    <module name="MethodParamPad"/>
+    <module name="OperatorWrap"/>
+    <module name="ParenPad"/>
+    <module name="TypecastParenPad"/>
         <module name="LeftCurly">
-            <property name="option" value="nl"/>
+            <property name="option" value="eol"/>
         </module>
-        <module name="FinalLocalVariable">
-        </module>
+    <!-- FinalLocalVariable removed to reduce noise in tests and DTO mappers -->
         <module name="Indentation">
             <property name="basicOffset" value="4"/>
             <property name="braceAdjustment" value="0"/>

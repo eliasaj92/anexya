@@ -3,13 +3,14 @@ package com.anexya.app.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,20 +20,25 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import com.anexya.app.cloud.CloudLogger;
 import com.anexya.app.cloud.CloudServiceFactory;
 import com.anexya.app.cloud.MetricsPublisher;
 import com.anexya.app.domain.TagRead;
 import com.anexya.app.repository.TagReadRepository;
+import com.anexya.app.service.impl.DefaultTagReadService;
+import com.anexya.app.service.model.TagReadCreate;
+import com.anexya.app.service.model.TagReadUpdate;
 import com.anexya.app.web.TagReadNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
-class DefaultTagReadServiceTest
-{
-
+class DefaultTagReadServiceTest {
     @Mock
     private TagReadRepository repository;
+
+    @Mock
+    private ObjectProvider<CloudServiceFactory> cloudFactoryProvider;
 
     @Mock
     private CloudServiceFactory cloudFactory;
@@ -47,10 +53,13 @@ class DefaultTagReadServiceTest
     private DefaultTagReadService service;
 
     @Test
-    void get_shouldReturnEntity()
-    {
+    void get_shouldReturnEntity() {
         UUID id = UUID.randomUUID();
-        TagRead read = TagRead.builder().id(id).epc("EPC").siteName("Site").build();
+        TagRead read = TagRead.builder()
+                              .id(id)
+                              .epc("EPC")
+                              .siteName("Site")
+                              .build();
         when(repository.findById(id)).thenReturn(Optional.of(read));
 
         TagRead result = service.get(id);
@@ -59,8 +68,7 @@ class DefaultTagReadServiceTest
     }
 
     @Test
-    void get_shouldThrowWhenMissing()
-    {
+    void get_shouldThrowWhenMissing() {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(Optional.empty());
 
@@ -68,82 +76,171 @@ class DefaultTagReadServiceTest
     }
 
     @Test
-    void create_shouldPersistAndEmitMetrics()
-    {
+    void create_shouldPersistAndEmitMetrics() {
         Instant now = Instant.now();
-        when(cloudFactory.logger()).thenReturn(cloudLogger);
-        when(cloudFactory.metrics()).thenReturn(metricsPublisher);
+        stubCloudAvailable();
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        TagRead created = service.create("SiteA", "EPC1", "REF1", "Dock", -40.0, now);
+        TagRead created = service.create(TagReadCreate.builder()
+                                                      .siteName("SiteA")
+                                                      .epc("EPC1")
+                                                      .referenceCode("REF1")
+                                                      .location("Dock")
+                                                      .rssi(-40.0)
+                                                      .readAt(now)
+                                                      .build());
 
-        assertThat(created.getId()).isNotNull();
-        assertThat(created.getReadAt()).isEqualTo(now);
+        assertThat(created.id()).isNotNull();
+        assertThat(created.readAt()).isEqualTo(now);
 
         ArgumentCaptor<TagRead> savedCaptor = ArgumentCaptor.forClass(TagRead.class);
         verify(repository).save(savedCaptor.capture());
-        assertThat(savedCaptor.getValue().getEpc()).isEqualTo("EPC1");
+        assertThat(savedCaptor.getValue()
+                              .epc()).isEqualTo("EPC1");
 
-        verify(cloudLogger).log(eq("tag_read_created"), any(Map.class));
-        verify(metricsPublisher).increment(eq("tag_reads.created"), eq(1.0), any(Map.class));
+        verify(cloudLogger).log(eq("tag_read_created"), anyMap());
+        verify(metricsPublisher).increment(eq("tag_reads.created"), eq(1.0), anyMap());
     }
 
     @Test
     void create_shouldDefaultReadAtWhenNull() {
-        when(cloudFactory.logger()).thenReturn(cloudLogger);
-        when(cloudFactory.metrics()).thenReturn(metricsPublisher);
+        stubCloudAvailable();
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        TagRead created = service.create("SiteA", "EPC1", "REF1", "Dock", -40.0, null);
+        TagRead created = service.create(TagReadCreate.builder()
+                                                      .siteName("SiteA")
+                                                      .epc("EPC1")
+                                                      .referenceCode("REF1")
+                                                      .location("Dock")
+                                                      .rssi(-40.0)
+                                                      .readAt(null)
+                                                      .build());
 
-        assertThat(created.getReadAt()).isNotNull();
+        assertThat(created.readAt()).isNotNull();
     }
 
     @Test
-    void update_shouldPersistChangesAndRetainReadAtWhenNull()
-    {
+    void create_shouldSkipCloudWhenUnavailable() {
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cloudFactoryProvider.getIfAvailable()).thenReturn(null);
+
+        TagRead created = service.create(TagReadCreate.builder()
+                                        .siteName("SiteA")
+                                        .epc("EPC1")
+                                        .referenceCode("REF1")
+                                        .location("Dock")
+                                        .rssi(-40.0)
+                                        .readAt(null)
+                                        .build());
+
+        assertThat(created.id()).isNotNull();
+        verify(repository).save(any(TagRead.class));
+        verifyNoInteractions(cloudLogger, metricsPublisher);
+    }
+
+    @Test
+    void update_shouldPersistChangesAndRetainReadAtWhenNull() {
         UUID id = UUID.randomUUID();
         Instant originalReadAt = Instant.parse("2024-01-01T00:00:00Z");
-        TagRead existing = TagRead.builder().id(id).siteName("SiteA").epc("EPC1").referenceCode("REF1")
-                .location("Dock1").rssi(-50.0).readAt(originalReadAt).build();
+        TagRead existing = TagRead.builder()
+                                  .id(id)
+                                  .siteName("SiteA")
+                                  .epc("EPC1")
+                                  .referenceCode("REF1")
+                                  .location("Dock1")
+                                  .rssi(-50.0)
+                                  .readAt(originalReadAt)
+                                  .build();
 
         when(repository.findById(id)).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cloudFactory.logger()).thenReturn(cloudLogger);
-        when(cloudFactory.metrics()).thenReturn(metricsPublisher);
+        stubCloudAvailable();
 
-        TagRead updated = service.update(id, "SiteB", "EPC2", "REF2", "Dock2", -30.0, null);
+        TagRead updated = service.update(id,
+                                         TagReadUpdate.builder()
+                                                      .siteName("SiteB")
+                                                      .epc("EPC2")
+                                                      .referenceCode("REF2")
+                                                      .location("Dock2")
+                                                      .rssi(-30.0)
+                                                      .readAt(null)
+                                                      .build());
 
-        assertThat(updated.getSiteName()).isEqualTo("SiteB");
-        assertThat(updated.getEpc()).isEqualTo("EPC2");
-        assertThat(updated.getReadAt()).isEqualTo(originalReadAt); // retained when null
+        assertThat(updated.siteName()).isEqualTo("SiteB");
+        assertThat(updated.epc()).isEqualTo("EPC2");
+        assertThat(updated.readAt()).isEqualTo(originalReadAt); // retained when
+                                                               // null
 
         verify(repository).save(any(TagRead.class));
-        verify(cloudLogger).log(eq("tag_read_updated"), any(Map.class));
-        verify(metricsPublisher).increment(eq("tag_reads.updated"), eq(1.0), any(Map.class));
+        verify(cloudLogger).log(eq("tag_read_updated"), anyMap());
+        verify(metricsPublisher).increment(eq("tag_reads.updated"), eq(1.0), anyMap());
     }
 
     @Test
-    void update_shouldUseProvidedReadAtWhenNotNull()
-    {
+    void update_shouldUseProvidedReadAtWhenNotNull() {
         UUID id = UUID.randomUUID();
         Instant supplied = Instant.parse("2024-02-02T00:00:00Z");
-        TagRead existing = TagRead.builder().id(id).siteName("SiteA").epc("EPC1").referenceCode("REF1")
-                .location("Dock1").rssi(-50.0).readAt(Instant.parse("2024-01-01T00:00:00Z")).build();
+        TagRead existing = TagRead.builder()
+                                  .id(id)
+                                  .siteName("SiteA")
+                                  .epc("EPC1")
+                                  .referenceCode("REF1")
+                                  .location("Dock1")
+                                  .rssi(-50.0)
+                                  .readAt(Instant.parse("2024-01-01T00:00:00Z"))
+                                  .build();
 
         when(repository.findById(id)).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(cloudFactory.logger()).thenReturn(cloudLogger);
-        when(cloudFactory.metrics()).thenReturn(metricsPublisher);
+        stubCloudAvailable();
 
-        TagRead updated = service.update(id, "SiteB", "EPC2", "REF2", "Dock2", -30.0, supplied);
+        TagRead updated = service.update(id,
+                                         TagReadUpdate.builder()
+                                                      .siteName("SiteB")
+                                                      .epc("EPC2")
+                                                      .referenceCode("REF2")
+                                                      .location("Dock2")
+                                                      .rssi(-30.0)
+                                                      .readAt(supplied)
+                                                      .build());
 
-        assertThat(updated.getReadAt()).isEqualTo(supplied);
+        assertThat(updated.readAt()).isEqualTo(supplied);
     }
 
     @Test
-    void delete_shouldThrowWhenNotFound()
-    {
+    void update_shouldWorkWhenCloudUnavailable() {
+        UUID id = UUID.randomUUID();
+        TagRead existing = TagRead.builder()
+                                  .id(id)
+                                  .siteName("SiteA")
+                                  .epc("EPC1")
+                                  .referenceCode("REF1")
+                                  .location("Dock1")
+                                  .rssi(-50.0)
+                                  .readAt(Instant.parse("2024-01-01T00:00:00Z"))
+                                  .build();
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(cloudFactoryProvider.getIfAvailable()).thenReturn(null);
+
+        TagRead updated = service.update(id,
+                                         TagReadUpdate.builder()
+                                                      .siteName("SiteB")
+                                                      .epc("EPC2")
+                                                      .referenceCode("REF2")
+                                                      .location("Dock2")
+                                                      .rssi(-30.0)
+                                                      .readAt(Instant.parse("2024-02-02T00:00:00Z"))
+                                                      .build());
+
+        assertThat(updated.siteName()).isEqualTo("SiteB");
+        verify(repository).save(any(TagRead.class));
+        verifyNoInteractions(cloudLogger, metricsPublisher);
+    }
+
+    @Test
+    void delete_shouldThrowWhenNotFound() {
         UUID id = UUID.randomUUID();
         when(repository.findById(id)).thenReturn(Optional.empty());
 
@@ -151,29 +248,49 @@ class DefaultTagReadServiceTest
     }
 
     @Test
-    void delete_shouldRemoveAndEmitMetrics()
-    {
+    void delete_shouldRemoveAndEmitMetrics() {
         UUID id = UUID.randomUUID();
-        TagRead existing = TagRead.builder().id(id).build();
+        TagRead existing = TagRead.builder()
+                                  .id(id)
+                                  .build();
         when(repository.findById(id)).thenReturn(Optional.of(existing));
-        when(cloudFactory.logger()).thenReturn(cloudLogger);
-        when(cloudFactory.metrics()).thenReturn(metricsPublisher);
+        stubCloudAvailable();
 
         service.delete(id);
 
         verify(repository).deleteById(id);
-        verify(cloudLogger).log(eq("tag_read_deleted"), any(Map.class));
-        verify(metricsPublisher).increment(eq("tag_reads.deleted"), eq(1.0), any(Map.class));
+        verify(cloudLogger).log(eq("tag_read_deleted"), anyMap());
+        verify(metricsPublisher).increment(eq("tag_reads.deleted"), eq(1.0), anyMap());
+    }
+
+    @Test
+    void delete_shouldWorkWhenCloudUnavailable() {
+        UUID id = UUID.randomUUID();
+        TagRead existing = TagRead.builder()
+                                  .id(id)
+                                  .build();
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(cloudFactoryProvider.getIfAvailable()).thenReturn(null);
+
+        service.delete(id);
+
+        verify(repository).deleteById(id);
+        verifyNoInteractions(cloudLogger, metricsPublisher);
     }
 
     @Test
     void findByFilters_shouldDelegateToRepository() {
-        when(repository.findByFilters(Optional.of("E"), Optional.empty(), Optional.of("S")))
-                .thenReturn(List.of());
+        when(repository.findByFilters(Optional.of("E"), Optional.empty(), Optional.of("S"))).thenReturn(List.of());
 
         List<TagRead> results = service.findByFilters(Optional.of("E"), Optional.empty(), Optional.of("S"));
 
         assertThat(results).isEmpty();
         verify(repository).findByFilters(Optional.of("E"), Optional.empty(), Optional.of("S"));
+    }
+
+    private void stubCloudAvailable() {
+        when(cloudFactoryProvider.getIfAvailable()).thenReturn(cloudFactory);
+        when(cloudFactory.logger()).thenReturn(Optional.of(cloudLogger));
+        when(cloudFactory.metrics()).thenReturn(Optional.of(metricsPublisher));
     }
 }

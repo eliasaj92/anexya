@@ -23,6 +23,7 @@ import com.anexya.app.api.TagReadResponse;
 import com.anexya.app.api.TagSummaryResponse;
 import com.anexya.app.api.UpdateTagReadRequest;
 import com.anexya.app.api.mapper.TagReadMapper;
+import com.anexya.app.api.mapper.TagReadRequestMapper;
 import com.anexya.app.api.mapper.TagSummaryMapper;
 import com.anexya.app.service.AggregationStrategy;
 import com.anexya.app.service.TagReadService;
@@ -34,61 +35,56 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/tag-reads")
 @RequiredArgsConstructor
 @Validated
-public class TagReadController
-{
-
+public class TagReadController {
     private final TagReadService tagReadService;
     private final AggregationStrategy aggregationStrategy;
     private final TagReadMapper tagReadMapper;
     private final TagSummaryMapper tagSummaryMapper;
+    private final TagReadRequestMapper tagReadRequestMapper;
 
     @GetMapping("/{id}")
-    public TagReadResponse get(@PathVariable UUID id)
-    {
+    public TagReadResponse get(@PathVariable UUID id) {
         return tagReadMapper.toResponse(tagReadService.get(id));
     }
 
     @GetMapping("/search")
     public List<TagReadResponse> search(@RequestParam(value = "epc", required = false) String epc,
-            @RequestParam(value = "location", required = false) String location,
-            @RequestParam(value = "siteName", required = false) String siteName)
-    {
-        return tagReadService
-                .findByFilters(Optional.ofNullable(epc), Optional.ofNullable(location), Optional.ofNullable(siteName))
-                .stream().map(tagReadMapper::toResponse).toList();
+                                        @RequestParam(value = "location", required = false) String location,
+                                        @RequestParam(value = "siteName", required = false) String siteName) {
+        return tagReadService.findByFilters(Optional.ofNullable(epc), Optional.ofNullable(location), Optional.ofNullable(siteName))
+                             .stream()
+                             .map(tagReadMapper::toResponse)
+                             .toList();
     }
 
     @PostMapping
-    public ResponseEntity<TagReadResponse> create(@Valid @RequestBody CreateTagReadRequest request)
-    {
-        var created = tagReadService.create(request.getSiteName(), request.getEpc(), request.getReferenceCode(),
-                request.getLocation(), request.getRssi(), request.getReadAt());
-        return ResponseEntity.status(HttpStatus.CREATED).body(tagReadMapper.toResponse(created));
+    public ResponseEntity<TagReadResponse> create(@Valid @RequestBody CreateTagReadRequest request) {
+        final var created = tagReadService.create(tagReadRequestMapper.toCreate(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                             .body(tagReadMapper.toResponse(created));
     }
 
     @PutMapping("/{id}")
-    public TagReadResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateTagReadRequest request)
-    {
-        var updated = tagReadService.update(id, request.getSiteName(), request.getEpc(), request.getReferenceCode(),
-                request.getLocation(), request.getRssi(), request.getReadAt());
+    public TagReadResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateTagReadRequest request) {
+        final var updated = tagReadService.update(id, tagReadRequestMapper.toUpdate(request));
         return tagReadMapper.toResponse(updated);
     }
 
     @GetMapping("/summary/by-epc")
     public List<TagSummaryResponse> summarizeByEpc(@RequestParam("startDate") Instant startDate,
-            @RequestParam("endDate") Instant endDate,
-            @RequestParam(value = "siteName", required = false) String siteName,
-            @RequestParam(value = "epc", required = false) String epc)
-    {
-        return aggregationStrategy
-                .summarizeByTag(startDate, endDate, Optional.ofNullable(siteName), Optional.ofNullable(epc)).stream()
-                .map(tagSummaryMapper::toResponse).toList();
+                                                   @RequestParam("endDate") Instant endDate,
+                                                   @RequestParam(value = "siteName", required = false) String siteName,
+                                                   @RequestParam(value = "epc", required = false) String epc) {
+        return aggregationStrategy.summarizeByTag(startDate, endDate, Optional.ofNullable(siteName), Optional.ofNullable(epc))
+                                  .stream()
+                                  .map(tagSummaryMapper::toResponse)
+                                  .toList();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id)
-    {
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
         tagReadService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent()
+                             .build();
     }
 }

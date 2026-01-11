@@ -1,20 +1,19 @@
 package com.anexya.app.service;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import com.anexya.app.domain.TagRead;
+import com.anexya.app.service.model.TagReadCreate;
+import com.anexya.app.service.model.TagReadUpdate;
 
-public interface TagReadService
-{
+public interface TagReadService {
     TagRead get(UUID id);
 
-    TagRead create(String siteName, String epc, String referenceCode, String location, Double rssi, Instant readAt);
+    TagRead create(TagReadCreate create);
 
-    TagRead update(UUID id, String siteName, String epc, String referenceCode, String location, Double rssi,
-            Instant readAt);
+    TagRead update(UUID id, TagReadUpdate update);
 
     void delete(UUID id);
 

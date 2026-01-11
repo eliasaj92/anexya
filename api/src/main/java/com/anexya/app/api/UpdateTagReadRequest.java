@@ -4,26 +4,13 @@ import java.time.Instant;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Builder;
 
-@Data
-public class UpdateTagReadRequest
-{
-    @NotBlank
-    private String siteName;
-
-    @NotBlank
-    private String epc;
-
-    @NotBlank
-    private String referenceCode;
-
-    @NotBlank
-    private String location;
-
-    @NotNull
-    private Double rssi;
-
-    @NotNull
-    private Instant readAt;
+@Builder
+public record UpdateTagReadRequest(@NotBlank String siteName,
+                                   @NotBlank String epc,
+                                   @NotBlank String referenceCode,
+                                   @NotBlank String location,
+                                   @NotNull Double rssi,
+                                   @NotNull Instant readAt) {
 }

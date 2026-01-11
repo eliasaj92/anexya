@@ -6,8 +6,7 @@ import java.util.UUID;
 
 import com.anexya.app.domain.TagRead;
 
-public interface TagReadRepository
-{
+public interface TagReadRepository {
     Optional<TagRead> findById(UUID id);
 
     TagRead save(TagRead tx);

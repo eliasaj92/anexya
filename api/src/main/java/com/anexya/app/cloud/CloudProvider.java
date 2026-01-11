@@ -1,6 +1,5 @@
 package com.anexya.app.cloud;
 
-public enum CloudProvider
-{
+public enum CloudProvider {
     AWS, NONE
 }

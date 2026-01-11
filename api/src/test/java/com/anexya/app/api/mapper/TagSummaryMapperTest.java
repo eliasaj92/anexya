@@ -10,51 +10,65 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.anexya.app.api.TagSummaryResponse;
-import com.anexya.app.service.TagSummary;
+import com.anexya.app.service.model.TagSummary;
 
 @ExtendWith(MockitoExtension.class)
-class TagSummaryMapperTest
-{
-
-    private final TagSummaryMapper mapper = new TagSummaryMapper();
+class TagSummaryMapperTest {
+    private final TagSummaryMapper mapper = Mappers.getMapper(TagSummaryMapper.class);
 
     @Test
-    void toResponse_mapsAllFields()
-    {
+    void toResponse_mapsAllFields() {
         Instant first = Instant.parse("2024-01-01T00:00:00Z");
         Instant last = Instant.parse("2024-01-02T00:00:00Z");
-        TagSummary summary = new TagSummary("epc123", 5, -40.5, -30.0, 2, "Dock1", first, last);
+        TagSummary summary = TagSummary.builder()
+                                       .epc("epc123")
+                                       .totalReadCount(5)
+                                       .averageRssi(-40.5)
+                                       .peakRssi(-30.0)
+                                       .locationCount(2)
+                                       .mostDetectedLocation("Dock1")
+                                       .firstSeen(first)
+                                       .lastSeen(last)
+                                       .build();
 
         TagSummaryResponse dto = mapper.toResponse(summary);
 
-        assertThat(dto.getEpc()).isEqualTo("epc123");
-        assertThat(dto.getTotalReadCount()).isEqualTo(5);
-        assertThat(dto.getAverageRssi()).isEqualTo(-40.5);
-        assertThat(dto.getPeakRssi()).isEqualTo(-30.0);
-        assertThat(dto.getLocationCount()).isEqualTo(2);
-        assertThat(dto.getMostDetectedLocation()).isEqualTo("Dock1");
-        assertThat(dto.getFirstSeen()).isEqualTo(first.toString());
-        assertThat(dto.getLastSeen()).isEqualTo(last.toString());
+        assertThat(dto.epc()).isEqualTo("epc123");
+        assertThat(dto.totalReadCount()).isEqualTo(5);
+        assertThat(dto.averageRssi()).isEqualTo(-40.5);
+        assertThat(dto.peakRssi()).isEqualTo(-30.0);
+        assertThat(dto.locationCount()).isEqualTo(2);
+        assertThat(dto.mostDetectedLocation()).isEqualTo("Dock1");
+        assertThat(dto.firstSeen()).isEqualTo(first.toString());
+        assertThat(dto.lastSeen()).isEqualTo(last.toString());
     }
 
     @Test
-    void toResponse_handlesNulls()
-    {
-        TagSummary summary = new TagSummary("epc123", 1, 0.0, 0.0, 1, null, null, null);
+    void toResponse_handlesNulls() {
+        TagSummary summary = TagSummary.builder()
+                                       .epc("epc123")
+                                       .totalReadCount(1)
+                                       .averageRssi(0.0)
+                                       .peakRssi(0.0)
+                                       .locationCount(1)
+                                       .mostDetectedLocation(null)
+                                       .firstSeen(null)
+                                       .lastSeen(null)
+                                       .build();
 
         TagSummaryResponse dto = mapper.toResponse(summary);
 
-        assertThat(dto.getMostDetectedLocation()).isNull();
-        assertThat(dto.getFirstSeen()).isNull();
-        assertThat(dto.getLastSeen()).isNull();
+        assertThat(dto.mostDetectedLocation()).isNull();
+        assertThat(dto.firstSeen()).isNull();
+        assertThat(dto.lastSeen()).isNull();
     }
 
     @Test
-    void toResponse_usesAccessors()
-    {
+    void toResponse_usesAccessors() {
         TagSummary summary = mock(TagSummary.class);
         Instant first = Instant.parse("2024-02-01T00:00:00Z");
         Instant last = Instant.parse("2024-02-02T00:00:00Z");
@@ -70,14 +84,14 @@ class TagSummaryMapperTest
 
         TagSummaryResponse dto = mapper.toResponse(summary);
 
-        assertThat(dto.getEpc()).isEqualTo("epcM");
-        assertThat(dto.getTotalReadCount()).isEqualTo(7);
-        assertThat(dto.getAverageRssi()).isEqualTo(-33.3);
-        assertThat(dto.getPeakRssi()).isEqualTo(-20.0);
-        assertThat(dto.getLocationCount()).isEqualTo(3);
-        assertThat(dto.getMostDetectedLocation()).isEqualTo("DockM");
-        assertThat(dto.getFirstSeen()).isEqualTo(first.toString());
-        assertThat(dto.getLastSeen()).isEqualTo(last.toString());
+        assertThat(dto.epc()).isEqualTo("epcM");
+        assertThat(dto.totalReadCount()).isEqualTo(7);
+        assertThat(dto.averageRssi()).isEqualTo(-33.3);
+        assertThat(dto.peakRssi()).isEqualTo(-20.0);
+        assertThat(dto.locationCount()).isEqualTo(3);
+        assertThat(dto.mostDetectedLocation()).isEqualTo("DockM");
+        assertThat(dto.firstSeen()).isEqualTo(first.toString());
+        assertThat(dto.lastSeen()).isEqualTo(last.toString());
 
         verify(summary, atLeastOnce()).epc();
         verify(summary, atLeastOnce()).totalReadCount();

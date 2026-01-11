@@ -4,6 +4,7 @@
     "@aws-cdk/core:newStyleStackSynthesis": true,
     "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
     "@aws-cdk/aws-ecs:arnFormatIncludesClusterName": true,
-    "@aws-cdk/aws-secretsmanager:denyUntrustedVpcEndpoints": true
+    "@aws-cdk/aws-secretsmanager:denyUntrustedVpcEndpoints": true,
+    "bootstrapQualifier": "anexya"
   }
 }

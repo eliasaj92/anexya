@@ -10,7 +10,6 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as kms from 'aws-cdk-lib/aws-kms';
 
 export class AnexyaInfraStack extends cdk.Stack {
@@ -23,9 +22,10 @@ export class AnexyaInfraStack extends cdk.Stack {
       description: 'Optional KMS key ARN used by the API for referenceCode encryption. Leave blank to disable.',
     });
 
-    const certificateArnParam = new cdk.CfnParameter(this, 'AcmCertificateArn', {
+    const ecrRepoNameParam = new cdk.CfnParameter(this, 'EcrRepositoryName', {
       type: 'String',
-      description: 'ACM certificate ARN for HTTPS on the load balancer.',
+      default: 'anexya-api-app',
+      description: 'Name of an existing ECR repository that holds the API image (created by AnexyaEcrStack).',
     });
 
     const vpc = new ec2.Vpc(this, 'Vpc', {
@@ -42,9 +42,7 @@ export class AnexyaInfraStack extends cdk.Stack {
       retention: logs.RetentionDays.ONE_MONTH,
     });
 
-    const repository = new ecr.Repository(this, 'ApiRepository', {
-      repositoryName: 'anexya-api',
-    });
+    const repository = ecr.Repository.fromRepositoryName(this, 'ApiRepository', ecrRepoNameParam.valueAsString);
 
     const dbCredentials = new rds.DatabaseSecret(this, 'DbCredentials', {
       username: 'appuser',
@@ -56,17 +54,18 @@ export class AnexyaInfraStack extends cdk.Stack {
       description: 'Customer-managed KMS key for RDS encryption at rest',
     });
 
-    const db = new rds.DatabaseInstance(this, 'TasksDb', {
-      engine: rds.DatabaseInstanceEngine.mysql({ version: rds.MysqlEngineVersion.VER_8_0_36 }),
+    const db = new rds.DatabaseInstance(this, 'TagreadsDb', {
+      engine: rds.DatabaseInstanceEngine.mysql({ version: rds.MysqlEngineVersion.VER_8_0_40 }),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
       credentials: rds.Credentials.fromSecret(dbCredentials),
       allocatedStorage: 20,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-      multiAz: true,
+      multiAz: false,
       publiclyAccessible: false,
-      deletionProtection: false,
-      databaseName: 'tasks',
+      deletionProtection: true,
+      backupRetention: cdk.Duration.days(1),
+      databaseName: 'tagreads',
       storageEncryptionKey: rdsKmsKey,
     });
 
@@ -74,14 +73,13 @@ export class AnexyaInfraStack extends cdk.Stack {
       cluster,
       cpu: 512,
       memoryLimitMiB: 1024,
-  desiredCount: 2,
+      desiredCount: 2,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
-      listenerPort: 443,
-      protocol: elbv2.ApplicationProtocol.HTTPS,
-      certificate: acm.Certificate.fromCertificateArn(this, 'AlbCertificate', certificateArnParam.valueAsString),
-      redirectHTTP: true,
+      listenerPort: 80,
+      protocol: elbv2.ApplicationProtocol.HTTP,
       publicLoadBalancer: true,
+      enableExecuteCommand: true,
       taskImageOptions: {
         containerName: 'anexya-api',
         image: ecs.ContainerImage.fromEcrRepository(repository, 'latest'),
@@ -96,6 +94,7 @@ export class AnexyaInfraStack extends cdk.Stack {
           MYSQL_PORT: db.instanceEndpoint.port.toString(),
           MYSQL_DB: 'tagreads',
           APP_KMS_KEY_ID: kmsKeyArnParam.valueAsString,
+          SPRING_PROFILES_ACTIVE: 'mysql',
         },
         secrets: {
           MYSQL_USER: ecs.Secret.fromSecretsManager(dbCredentials, 'username'),

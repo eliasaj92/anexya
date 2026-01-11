@@ -11,16 +11,11 @@ import com.anexya.app.cloud.CloudLogger;
 
 @Component
 @Profile("aws")
-public class AwsCloudLogger implements CloudLogger
-{
-
+public class AwsCloudLogger implements CloudLogger {
     private static final Logger log = LoggerFactory.getLogger(AwsCloudLogger.class);
 
     @Override
-    public void log(String event, Map<String, String> fields)
-    {
-        // In a real deployment this would ship to CloudWatch Logs. For now, we log with
-        // a marker.
+    public void log(String event, Map<String, String> fields) {
         log.info("[AWS-CloudWatch] event={} fields={}", event, fields);
     }
 }

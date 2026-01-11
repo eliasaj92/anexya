@@ -14,26 +14,25 @@ import lombok.RequiredArgsConstructor;
 @Component
 @Profile("aws")
 @RequiredArgsConstructor
-public class AwsMetricsPublisher implements MetricsPublisher
-{
-
+public class AwsMetricsPublisher implements MetricsPublisher {
     private final MeterRegistry meterRegistry;
 
     @Override
-    public void increment(String metricName, double amount, Map<String, String> tags)
-    {
-        meterRegistry.counter(metricName, tagsToArray(tags)).increment(amount);
+    public void increment(String metricName, double amount, Map<String, String> tags) {
+        meterRegistry.counter(metricName, tagsToArray(tags))
+                     .increment(amount);
     }
 
     @Override
-    public void recordDuration(String metricName, Duration duration, Map<String, String> tags)
-    {
-        meterRegistry.timer(metricName, tagsToArray(tags)).record(duration);
+    public void recordDuration(String metricName, Duration duration, Map<String, String> tags) {
+        meterRegistry.timer(metricName, tagsToArray(tags))
+                     .record(duration);
     }
 
-    private String[] tagsToArray(Map<String, String> tags)
-    {
-        return tags.entrySet().stream().flatMap(e -> java.util.stream.Stream.of(e.getKey(), e.getValue()))
-                .toArray(String[]::new);
+    private String[] tagsToArray(Map<String, String> tags) {
+        return tags.entrySet()
+                   .stream()
+                   .flatMap(e -> java.util.stream.Stream.of(e.getKey(), e.getValue()))
+                   .toArray(String[]::new);
     }
 }

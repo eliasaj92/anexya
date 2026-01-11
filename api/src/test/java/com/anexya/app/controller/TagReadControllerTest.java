@@ -3,8 +3,6 @@ package com.anexya.app.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -13,9 +11,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -26,51 +25,55 @@ import com.anexya.app.api.TagReadResponse;
 import com.anexya.app.api.TagSummaryResponse;
 import com.anexya.app.api.UpdateTagReadRequest;
 import com.anexya.app.api.mapper.TagReadMapper;
+import com.anexya.app.api.mapper.TagReadRequestMapper;
 import com.anexya.app.api.mapper.TagSummaryMapper;
 import com.anexya.app.domain.TagRead;
 import com.anexya.app.service.AggregationStrategy;
 import com.anexya.app.service.TagReadService;
-import com.anexya.app.service.TagSummary;
+import com.anexya.app.service.model.TagReadCreate;
+import com.anexya.app.service.model.TagReadUpdate;
+import com.anexya.app.service.model.TagSummary;
 import com.anexya.app.web.TagReadNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
-class TagReadControllerTest
-{
-
+class TagReadControllerTest {
     @Mock
     private TagReadService tagReadService;
 
     @Mock
     private AggregationStrategy aggregationStrategy;
 
-    @Mock
     private TagReadMapper tagReadMapper;
-
-    @Mock
     private TagSummaryMapper tagSummaryMapper;
-
-    @InjectMocks
+    private TagReadRequestMapper tagReadRequestMapper;
     private TagReadController controller;
 
-    @Test
-    void getShouldMapResponse()
-    {
-        UUID id = UUID.randomUUID();
-        TagRead domain = TagRead.builder().id(id).siteName("s").epc("e").build();
-        TagReadResponse dto = TagReadResponse.builder().id(id).build();
-        when(tagReadService.get(id)).thenReturn(domain);
-        when(tagReadMapper.toResponse(domain)).thenReturn(dto);
-
-        TagReadResponse result = controller.get(id);
-
-        assertThat(result).isSameAs(dto);
-        verify(tagReadService).get(id);
-        verify(tagReadMapper).toResponse(domain);
+    @BeforeEach
+    void setUp() {
+        tagReadMapper = Mappers.getMapper(TagReadMapper.class);
+        tagSummaryMapper = Mappers.getMapper(TagSummaryMapper.class);
+        tagReadRequestMapper = Mappers.getMapper(TagReadRequestMapper.class);
+        controller = new TagReadController(tagReadService, aggregationStrategy, tagReadMapper, tagSummaryMapper, tagReadRequestMapper);
     }
 
     @Test
-    void getShouldPropagateNotFound()
-    {
+    void getShouldMapResponse() {
+        UUID id = UUID.randomUUID();
+        TagRead domain = TagRead.builder()
+                                .id(id)
+                                .siteName("s")
+                                .epc("e")
+                                .build();
+        when(tagReadService.get(id)).thenReturn(domain);
+
+        TagReadResponse result = controller.get(id);
+
+        assertThat(result).isEqualTo(tagReadMapper.toResponse(domain));
+        verify(tagReadService).get(id);
+    }
+
+    @Test
+    void getShouldPropagateNotFound() {
         UUID id = UUID.randomUUID();
         when(tagReadService.get(id)).thenThrow(new TagReadNotFoundException(id));
 
@@ -78,85 +81,83 @@ class TagReadControllerTest
     }
 
     @Test
-    void searchShouldDelegateAndMap()
-    {
-        TagRead domain = TagRead.builder().id(UUID.randomUUID()).build();
-        TagReadResponse dto = TagReadResponse.builder().id(domain.getId()).build();
-        when(tagReadService.findByFilters(Optional.of("epc"), Optional.of("loc"), Optional.of("site")))
-                .thenReturn(List.of(domain));
-        when(tagReadMapper.toResponse(domain)).thenReturn(dto);
+    void searchShouldDelegateAndMap() {
+        TagRead domain = TagRead.builder()
+                                .id(UUID.randomUUID())
+                                .build();
+        when(tagReadService.findByFilters(Optional.of("epc"), Optional.of("loc"), Optional.of("site"))).thenReturn(List.of(domain));
 
         List<TagReadResponse> results = controller.search("epc", "loc", "site");
 
-        assertThat(results).containsExactly(dto);
+        assertThat(results).containsExactly(tagReadMapper.toResponse(domain));
         verify(tagReadService).findByFilters(Optional.of("epc"), Optional.of("loc"), Optional.of("site"));
-        verify(tagReadMapper).toResponse(domain);
     }
 
     @Test
-    void createShouldReturnCreatedResponse()
-    {
-        TagRead domain = TagRead.builder().id(UUID.randomUUID()).build();
-        TagReadResponse dto = TagReadResponse.builder().id(domain.getId()).build();
-        when(tagReadService.create(anyString(), anyString(), anyString(), anyString(), anyDouble(), any(Instant.class)))
-                .thenReturn(domain);
-        when(tagReadMapper.toResponse(domain)).thenReturn(dto);
+    void createShouldReturnCreatedResponse() {
+        TagRead domain = TagRead.builder()
+                                .id(UUID.randomUUID())
+                                .build();
+        when(tagReadService.create(any(TagReadCreate.class))).thenReturn(domain);
 
-        var request = new CreateTagReadRequest();
-        request.setSiteName("site");
-        request.setEpc("epc");
-        request.setReferenceCode("ref");
-        request.setLocation("loc");
-        request.setRssi(-40.0);
-        request.setReadAt(Instant.parse("2024-01-01T00:00:00Z"));
+        var request = CreateTagReadRequest.builder()
+                                          .siteName("site")
+                                          .epc("epc")
+                                          .referenceCode("ref")
+                                          .location("loc")
+                                          .rssi(-40.0)
+                                          .readAt(Instant.parse("2024-01-01T00:00:00Z"))
+                                          .build();
 
         ResponseEntity<TagReadResponse> response = controller.create(request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody()).isSameAs(dto);
+        assertThat(response.getBody()).isEqualTo(tagReadMapper.toResponse(domain));
     }
 
     @Test
-    void updateShouldReturnMappedResponse()
-    {
+    void updateShouldReturnMappedResponse() {
         UUID id = UUID.randomUUID();
-        TagRead domain = TagRead.builder().id(id).build();
-        TagReadResponse dto = TagReadResponse.builder().id(id).build();
-        when(tagReadService.update(any(), anyString(), anyString(), anyString(), anyString(), anyDouble(),
-                any(Instant.class))).thenReturn(domain);
-        when(tagReadMapper.toResponse(domain)).thenReturn(dto);
+        TagRead domain = TagRead.builder()
+                                .id(id)
+                                .build();
+        when(tagReadService.update(any(), any(TagReadUpdate.class))).thenReturn(domain);
 
-        UpdateTagReadRequest request = new UpdateTagReadRequest();
-        request.setSiteName("site");
-        request.setEpc("epc");
-        request.setReferenceCode("ref");
-        request.setLocation("loc");
-        request.setRssi(-30.0);
-        request.setReadAt(Instant.parse("2024-01-02T00:00:00Z"));
+        UpdateTagReadRequest request = UpdateTagReadRequest.builder()
+                                                           .siteName("site")
+                                                           .epc("epc")
+                                                           .referenceCode("ref")
+                                                           .location("loc")
+                                                           .rssi(-30.0)
+                                                           .readAt(Instant.parse("2024-01-02T00:00:00Z"))
+                                                           .build();
 
         TagReadResponse result = controller.update(id, request);
 
-        assertThat(result).isSameAs(dto);
+        assertThat(result).isEqualTo(tagReadMapper.toResponse(domain));
     }
 
     @Test
-    void summarizeShouldMapResponses()
-    {
-        TagSummary summary = new TagSummary("epc", 1, 0.0, 0.0, 1, "loc", Instant.EPOCH, Instant.EPOCH);
-        TagSummaryResponse dto = new TagSummaryResponse("epc", 1, 0.0, 0.0, 1, "loc", Instant.EPOCH.toString(),
-                Instant.EPOCH.toString());
-        when(aggregationStrategy.summarizeByTag(any(Instant.class), any(Instant.class), any(), any()))
-                .thenReturn(List.of(summary));
-        when(tagSummaryMapper.toResponse(summary)).thenReturn(dto);
+    void summarizeShouldMapResponses() {
+        TagSummary summary = TagSummary.builder()
+                                       .epc("epc")
+                                       .totalReadCount(1)
+                                       .averageRssi(0.0)
+                                       .peakRssi(0.0)
+                                       .locationCount(1)
+                                       .mostDetectedLocation("loc")
+                                       .firstSeen(Instant.EPOCH)
+                                       .lastSeen(Instant.EPOCH)
+                                       .build();
+        when(aggregationStrategy.summarizeByTag(any(Instant.class), any(Instant.class), any(), any())).thenReturn(List.of(summary));
 
         List<TagSummaryResponse> results = controller.summarizeByEpc(Instant.EPOCH, Instant.now(), null, null);
 
-        assertThat(results).containsExactly(dto);
+        assertThat(results).containsExactly(tagSummaryMapper.toResponse(summary));
     }
 
     @Test
-    void deleteShouldReturnNoContent()
-    {
+    void deleteShouldReturnNoContent() {
         UUID id = UUID.randomUUID();
 
         ResponseEntity<Void> response = controller.delete(id);

@@ -1,6 +1,4 @@
 spring:
-  autoconfigure:
-    exclude: []
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:tagreads}?createDatabaseIfNotExist=true&useSSL=true&sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3&serverTimezone=UTC
     username: ${MYSQL_USER:appuser}
@@ -8,7 +6,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema-mysql.sql
+      mode: never
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/mysql
+    baseline-on-migrate: true
 
 # Run with profile "mysql" to activate JdbcTagReadRepository

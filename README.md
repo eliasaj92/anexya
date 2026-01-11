@@ -1,23 +1,17 @@
-# Anexya SaaS Challenge
+# Anexya Monorepo
 
-Monorepo with a Java 21 Spring Boot Tag Read API and AWS infrastructure defined with the AWS CDK (TypeScript).
+Java 21 Spring Boot Tag Read API plus AWS CDK (TypeScript) infrastructure. Profile: `mysql` (JDBC + Flyway).
 
-## Prereqs
+## Prerequisites
 - Java 21
-- Gradle 8+ (or generate the wrapper with `gradle wrapper` inside `api/`)
+- Gradle wrapper
 - Node 18+
-- AWS CLI configured with credentials and a target account/region
+- Docker (buildx for multi-arch/amd64 on Apple Silicon)
+- AWS CLI configured with an account/region
 
-## API (Java 21, Spring Boot)
-- Location: `api/`
-- Current state: Tag Read ingestion + aggregation endpoints (in-memory by default, JDBC/MySQL under `mysql` profile).
-
-### Run locally (in-memory)
-```bash
-cd api
-./gradlew test
-./gradlew bootRun
-```
+## API (folder: `api/`)
+- Spring Boot 3.2, Lombok, MapStruct, Flyway, MySQL Testcontainers for integration tests.
+- Virtual threads enabled (`spring.threads.virtual.enabled=true`).
 
 ### Run locally with MySQL
 ```bash
@@ -27,71 +21,98 @@ cd api
 ```
 Environment variables also work: `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASSWORD`.
 
-### REST surface
-- `POST /api/tag-reads` — create a tag read (site, epc, referenceCode, location, rssi, readAt)
-- `GET /api/tag-reads` — list reads
-- `GET /api/tag-reads/{id}` — fetch by id
-- `GET /api/tag-reads/summary/by-epc?startDate=...&endDate=...&siteName=...&epc=...` — aggregate by EPC
+> Schema: for the `mysql` profile, automatic schema init is disabled; apply `schema-mysql.sql` manually (or via migrations) to create `tag_reads` before first run.
 
-### API docs (Swagger / OpenAPI)
-- JSON: `GET /v3/api-docs`
-- UI: `GET /swagger-ui.html`
+### Schema & Flyway
+- Prod `mysql` profile: migrations in `src/main/resources/db/migration/mysql` (partitioned `tag_reads`).
+- Tests use `src/test/resources/db/migration/testmysql` (non-partitioned) via `spring.flyway.locations` in tests.
 
-#### Viewing Swagger locally
-1. Start the app (in-memory):
-	```bash
-	cd api
-	./gradlew bootRun
-	```
-2. Open Swagger UI: http://localhost:8080/swagger-ui.html
-3. Download OpenAPI JSON: http://localhost:8080/v3/api-docs
+### Endpoints (port 8080)
+- `POST /api/tag-reads`
+- `GET /api/tag-reads/{id}`
+- `GET /api/tag-reads/search?epc=...&location=...&siteName=...`
+- `PUT /api/tag-reads/{id}`
+- `DELETE /api/tag-reads/{id}`
+- `GET /api/tag-reads/summary/by-epc?startDate=...&endDate=...&siteName=...&epc=...`
 
-## Infrastructure (AWS CDK v2, TypeScript)
-- Location: `infra/`
-- Provisions: VPC, ECS cluster, ECR repo (`anexya-api`), RDS MySQL (8.0), ALB-backed Fargate service (port 80 -> 8080), ALB health check `/actuator/health`. ECS tasks get DB host/port/db as env vars and username/password from Secrets Manager.
+### API docs
+- JSON: `/v3/api-docs`
+- UI: `/swagger-ui.html`
 
-### CDK usage
-```bash
-cd infra
-npm install
-npm run build
-npm run synth   # preview
-npm run deploy  # deploys AnexyaInfraStack
-```
-
-### Deploying the API image
-1) Build and push the Spring Boot image to the created ECR repo `anexya-api` (replace the URI from the stack output):
+### Packaging & Docker
 ```bash
 cd api
-./gradlew bootJar
-docker build -t <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/anexya-api:latest .
-aws ecr get-login-password --region <REGION> | docker login --username AWS --password-stdin <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com
-docker push <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/anexya-api:latest
+./gradlew -PskipTests=true bootJar
+docker build -t anexya-api:local .
 ```
-2) `cd infra && npm run deploy` to roll out the new image.
 
-## Operations guide
+## Infrastructure (folder: `infra/`, AWS CDK v2)
+Provisions VPC, ECS Fargate service (port 8080, ALB health `/actuator/health`), RDS MySQL 8, and ECR repo.
+
+### Deployment flow (ECR first, then push image, then app stack)
+1) Deploy ECR stack (creates the repo):
+```bash
+cd infra
+npm run deploy -- AnexyaEcrStack --profile <PROFILE> --parameters EcrRepositoryName=anexya-api-app
+```
+2) Build and push the Spring Boot image to that repo (replace `<ACCOUNT>`, `<REGION>`, repo if different):
+```bash
+cd api
+./gradlew -PskipTests=true bootJar
+
+# create/use a buildx builder once
+docker buildx create --name cross --use || docker buildx use cross
+
+# build and push amd64 (for ECS/Fargate)
+ECR_URI=<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/anexya-api-app
+docker buildx build --platform linux/amd64 -t $ECR_URI:latest --push .
+
+# optional: multi-arch
+# docker buildx build --platform linux/amd64,linux/arm64 -t $ECR_URI:latest --push .
+```
+3) Deploy the app stack to roll out the image:
+```bash
+cd infra
+npm run deploy -- AnexyaInfraStack --profile <PROFILE> --parameters EcrRepositoryName=anexya-api-app
+```
+
+4) Schema migrations (mysql profile)
+	- Flyway runs automatically on app startup. Migration scripts live in `api/src/main/resources/db/migration/mysql/`.
+	- The RDS endpoint and creds come from stack outputs and Secrets Manager. You can fetch them if you need to run Flyway manually:
+		```bash
+		REGION=us-east-1
+		STACK=AnexyaInfraStack
+
+		RDS_ENDPOINT=$(aws cloudformation describe-stacks --stack-name $STACK \
+		  --region $REGION --query "Stacks[0].Outputs[?OutputKey=='RdsEndpoint'].OutputValue" --output text)
+
+		SECRET_NAME=$(aws secretsmanager list-secrets --region $REGION \
+		  --query "SecretList[?contains(Name, 'DbCredentials')].Name | [0]" --output text)
+
+		aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --region $REGION \
+		  --query SecretString --output text
+		```
+	- Optional: run migrations manually from inside ECS via exec (keeps traffic in VPC): install mysql client, then run Flyway CLI or apply SQL as needed.
+
+## Operations
+- **Profiles**: `mysql` (set in the stack).
 - **Health**: `/actuator/health` (ALB target health check), `/actuator/metrics`, `/actuator/info`.
-- **Profiles**: default = in-memory; `mysql` = JDBC to RDS/MySQL. Set `SPRING_PROFILES_ACTIVE=mysql` in ECS task env for production.
+- **Schema**: Flyway runs automatically on startup for the `mysql` profile (migrations in `db/migration/mysql`).
 - **Secrets**: DB credentials are stored in Secrets Manager; injected into the task as `MYSQL_USER` and `MYSQL_PASSWORD`.
 - **Scaling**: ECS service CPU autoscaling (1–4 tasks, target 70%). Adjust in `infra/lib/anexya-infra-stack.ts`.
 - **Logging**: Standard Spring Boot logging to stdout; aggregate via CloudWatch Logs from ECS.
 - **Backups**: RDS automatic snapshots as per AWS defaults (can be customized in the stack).
 
 ## Architecture
-See below for the high-level diagram and component notes. A copy also lives in `docs/architecture.md`.
-
 ```mermaid
 flowchart LR
-	Client --> ALB[Application Load Balancer]
-	ALB --> ECS[Fargate Service]
-	ECS --> ApiContainer[Spring Boot App]
-	ApiContainer --> ECR[(ECR Image Repo)]
-	subgraph VPC
-		ALB
-		ECS
-		RDS
-	end
+  Client --> ALB[Application Load Balancer]
+  ALB --> ECS[Fargate Service]
+  ECS --> ApiContainer[Spring Boot App]
+  ApiContainer --> ECR[(ECR Image Repo)]
+  subgraph VPC
+    ALB
+    ECS
+    RDS
+  end
 ```
-
-![Architecture Diagram](docs/architecture.png)
