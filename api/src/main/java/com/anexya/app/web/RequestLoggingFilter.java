@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletResponseWrapper;
 
 @Component
+// Run early (but after critical built-ins) so we wrap the full request/response for timing and status logging.
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public class RequestLoggingFilter extends OncePerRequestFilter {
     private final ObjectProvider<CloudServiceFactory> cloudFactory;
