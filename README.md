@@ -23,6 +23,8 @@ Environment variables also work: `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_
 
 > Schema: for the `mysql` profile, automatic schema init is disabled; apply `schema-mysql.sql` manually (or via migrations) to create `tag_reads` before first run.
 
+> TLS: the JDBC URL uses `sslMode=VERIFY_CA` to keep TLS on while avoiding hostname verification issues common on RDS. If you need full hostname verification, switch to `sslMode=VERIFY_IDENTITY` and ensure the RDS endpoint hostname matches the certificate and the CA is trusted.
+
 ### Schema & Flyway
 - Prod `mysql` profile: migrations in `src/main/resources/db/migration/mysql` (partitioned `tag_reads`).
 - Tests use `src/test/resources/db/migration/testmysql` (non-partitioned) via `spring.flyway.locations` in tests.
