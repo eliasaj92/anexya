@@ -1,4 +1,4 @@
-package com.anexya.app.service.model;
+package com.anexya.app.domain;
 
 import java.time.Instant;
 

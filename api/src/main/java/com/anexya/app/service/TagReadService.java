@@ -5,8 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.anexya.app.domain.TagRead;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
 
 public interface TagReadService {
     TagRead get(UUID id);

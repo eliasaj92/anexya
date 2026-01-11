@@ -38,15 +38,16 @@ import com.anexya.app.api.mapper.TagSummaryMapper;
 import com.anexya.app.domain.TagRead;
 import com.anexya.app.service.AggregationStrategy;
 import com.anexya.app.service.TagReadService;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
+import com.anexya.app.domain.TagSummary;
 import com.anexya.app.web.RequestLoggingFilter;
 import com.anexya.app.web.TagReadNotFoundException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @WebMvcTest(controllers = TagReadController.class, excludeFilters = {@ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RequestLoggingFilter.class)})
 @AutoConfigureMockMvc(addFilters = false)
+@SuppressWarnings("null")
 class TagReadControllerMvcTest {
     @Autowired
     private MockMvc mockMvc;

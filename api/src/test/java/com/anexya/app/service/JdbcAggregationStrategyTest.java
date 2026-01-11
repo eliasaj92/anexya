@@ -24,7 +24,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.anexya.app.service.impl.JdbcAggregationStrategy;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagSummary;
 
 @Testcontainers
 @TestInstance(Lifecycle.PER_CLASS)

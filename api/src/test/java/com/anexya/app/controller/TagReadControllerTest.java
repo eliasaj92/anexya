@@ -30,9 +30,9 @@ import com.anexya.app.api.mapper.TagSummaryMapper;
 import com.anexya.app.domain.TagRead;
 import com.anexya.app.service.AggregationStrategy;
 import com.anexya.app.service.TagReadService;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
+import com.anexya.app.domain.TagSummary;
 import com.anexya.app.web.TagReadNotFoundException;
 
 @ExtendWith(MockitoExtension.class)

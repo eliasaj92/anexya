@@ -4,8 +4,8 @@ import org.mapstruct.Mapper;
 
 import com.anexya.app.api.CreateTagReadRequest;
 import com.anexya.app.api.UpdateTagReadRequest;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
 
 @Mapper(componentModel = "spring")
 public interface TagReadRequestMapper {

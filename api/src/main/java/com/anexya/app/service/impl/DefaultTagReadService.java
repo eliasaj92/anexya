@@ -11,10 +11,10 @@ import org.springframework.stereotype.Service;
 
 import com.anexya.app.cloud.CloudServiceFactory;
 import com.anexya.app.domain.TagRead;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
 import com.anexya.app.repository.TagReadRepository;
 import com.anexya.app.service.TagReadService;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
 import com.anexya.app.web.TagReadNotFoundException;
 
 import lombok.RequiredArgsConstructor;

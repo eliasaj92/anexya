@@ -28,8 +28,8 @@ import com.anexya.app.cloud.MetricsPublisher;
 import com.anexya.app.domain.TagRead;
 import com.anexya.app.repository.TagReadRepository;
 import com.anexya.app.service.impl.DefaultTagReadService;
-import com.anexya.app.service.model.TagReadCreate;
-import com.anexya.app.service.model.TagReadUpdate;
+import com.anexya.app.domain.TagReadCreate;
+import com.anexya.app.domain.TagReadUpdate;
 import com.anexya.app.web.TagReadNotFoundException;
 
 @ExtendWith(MockitoExtension.class)

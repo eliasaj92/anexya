@@ -4,7 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.anexya.app.api.TagSummaryResponse;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagSummary;
 
 @Mapper(componentModel = "spring")
 public interface TagSummaryMapper {

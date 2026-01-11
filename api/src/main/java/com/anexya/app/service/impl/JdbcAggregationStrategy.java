@@ -5,13 +5,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import com.anexya.app.service.AggregationStrategy;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagSummary;
 
 import lombok.RequiredArgsConstructor;
 
@@ -53,7 +54,7 @@ public class JdbcAggregationStrategy implements AggregationStrategy {
         siteName.ifPresent(params::add);
         epc.ifPresent(params::add);
 
-        return jdbcTemplate.query(sql.toString(),
+    return jdbcTemplate.query(Objects.requireNonNull(sql.toString()),
                                   (rs, rowNum) -> TagSummary.builder()
                                                             .epc(rs.getString("epc"))
                                                             .totalReadCount(rs.getLong("totalReadCount"))

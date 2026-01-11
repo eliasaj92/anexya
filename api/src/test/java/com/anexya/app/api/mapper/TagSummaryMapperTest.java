@@ -14,7 +14,7 @@ import org.mapstruct.factory.Mappers;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.anexya.app.api.TagSummaryResponse;
-import com.anexya.app.service.model.TagSummary;
+import com.anexya.app.domain.TagSummary;
 
 @ExtendWith(MockitoExtension.class)
 class TagSummaryMapperTest {
