@@ -5,6 +5,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -25,6 +27,8 @@ import jakarta.servlet.http.HttpServletResponseWrapper;
 // Run early (but after critical built-ins) so we wrap the full request/response for timing and status logging.
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public class RequestLoggingFilter extends OncePerRequestFilter {
+    private static final Logger log = LoggerFactory.getLogger(RequestLoggingFilter.class);
+
     private final ObjectProvider<CloudServiceFactory> cloudFactory;
 
     public RequestLoggingFilter(ObjectProvider<CloudServiceFactory> cloudFactory) {
@@ -57,9 +61,23 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         } finally {
             final int status = wrapper.getStatus();
             final Duration duration = Duration.between(start, Instant.now());
+            final long millis = duration.toMillis();
+
+            log.info("access method={} path={} status={} duration_ms={}", request.getMethod(), request.getRequestURI(), status, millis);
             if (cloud != null) {
                 cloud.metrics()
                      .ifPresent(metrics -> metrics.recordDuration("http.requests.duration", duration, Map.of("method", request.getMethod(), "status", String.valueOf(status))));
+
+                cloud.logger()
+                     .ifPresent(logger -> logger.log("access_log",
+                                                     Map.of("method",
+                                                            request.getMethod(),
+                                                            "path",
+                                                            request.getRequestURI(),
+                                                            "status",
+                                                            String.valueOf(status),
+                                                            "duration_ms",
+                                                            String.valueOf(millis))));
 
                 if (HttpStatus.valueOf(status)
                               .is5xxServerError()) {

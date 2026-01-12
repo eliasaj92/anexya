@@ -23,7 +23,7 @@ Environment variables also work: `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_
 
 > Schema: for the `mysql` profile, automatic schema init is disabled; apply `schema-mysql.sql` manually (or via migrations) to create `tag_reads` before first run.
 
-> TLS: the JDBC URL uses `sslMode=VERIFY_CA` to keep TLS on while avoiding hostname verification issues common on RDS. If you need full hostname verification, switch to `sslMode=VERIFY_IDENTITY` and ensure the RDS endpoint hostname matches the certificate and the CA is trusted.
+> TLS: the JDBC URL uses `sslMode=REQUIRED` to keep TLS on while skipping hostname/CA verification (useful in ECS when the RDS CA bundle isn’t present). For stronger verification, change to `sslMode=VERIFY_CA` (requires RDS CA in truststore) or `sslMode=VERIFY_IDENTITY` (also checks hostname).
 
 ### Schema & Flyway
 - Prod `mysql` profile: migrations in `src/main/resources/db/migration/mysql` (partitioned `tag_reads`).
@@ -101,6 +101,7 @@ npm run deploy -- AnexyaInfraStack --profile <PROFILE> --parameters EcrRepositor
 - **Health**: `/actuator/health` (ALB target health check), `/actuator/metrics`, `/actuator/info`.
 - **Schema**: Flyway runs automatically on startup for the `mysql` profile (migrations in `db/migration/mysql`).
 - **Secrets**: DB credentials are stored in Secrets Manager; injected into the task as `MYSQL_USER` and `MYSQL_PASSWORD`.
+- **Access logs**: Every request is logged (method, path, status, latency) to stdout; when profile `aws` is active, the same fields are emitted to CloudWatch via `access_log` events.
 - **Scaling**: ECS service CPU autoscaling (1–4 tasks, target 70%). Adjust in `infra/lib/anexya-infra-stack.ts`.
 - **Logging**: Standard Spring Boot logging to stdout; aggregate via CloudWatch Logs from ECS.
 - **Backups**: RDS automatic snapshots as per AWS defaults (can be customized in the stack).

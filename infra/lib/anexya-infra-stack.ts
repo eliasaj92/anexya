@@ -94,7 +94,7 @@ export class AnexyaInfraStack extends cdk.Stack {
           MYSQL_PORT: db.instanceEndpoint.port.toString(),
           MYSQL_DB: 'tagreads',
           APP_KMS_KEY_ID: kmsKeyArnParam.valueAsString,
-          SPRING_PROFILES_ACTIVE: 'mysql',
+          SPRING_PROFILES_ACTIVE: 'mysql,aws',
         },
         secrets: {
           MYSQL_USER: ecs.Secret.fromSecretsManager(dbCredentials, 'username'),
